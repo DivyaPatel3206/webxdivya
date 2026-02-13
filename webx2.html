@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FORGEFIT // NEURAL_OS_V2.0</title>
+    
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@800&family=Space+Grotesk:wght@300;500;700&family=JetBrains+Mono:wght@400;700&display=swap');
+
+        :root {
+            --accent: #00BFFF;
+            --accent-glow: rgba(0, 191, 255, 0.4);
+            --void: #020202;
+            --surface: #0a0a0a;
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glitch-speed: 0.2s;
+        }
+
+        /* --- TACTICAL CORE --- */
+        * { cursor: none !important; box-sizing: border-box; scroll-behavior: smooth; }
+        
+        body {
+            background-color: var(--void);
+            color: #fafafa;
+            font-family: 'Space Grotesk', sans-serif;
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        #cursor-main { width: 4px; height: 4px; background: white; border-radius: 50%; position: fixed; pointer-events: none; z-index: 10000; }
+        #cursor-aura { width: 44px; height: 44px; border: 1px solid var(--accent); border-radius: 50%; position: fixed; pointer-events: none; z-index: 9999; display: flex; align-items: center; justify-content: center; transition: width 0.3s, height 0.3s; }
+        #cursor-aura::after { content: ''; width: 2px; height: 2px; background: var(--accent); border-radius: 50%; }
+
+        /* --- AMBIENT NOISE & PARTICLES --- */
+        .overlay-master { position: fixed; inset: 0; pointer-events: none; z-index: 998; opacity: 0.03; background-image: url('https://grainy-gradients.vercel.app/noise.svg'); }
+        
+        .scanlines {
+            position: fixed; inset: 0; pointer-events: none; z-index: 999;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.2) 50%);
+            background-size: 100% 4px;
+            opacity: 0.15;
+        }
+
+        /* --- NAVIGATION --- */
+        nav {
+            position: fixed; top: 0; width: 100%; padding: 20px 5%;
+            display: flex; justify-content: space-between; align-items: center;
+            background: linear-gradient(to bottom, var(--void), transparent);
+            backdrop-filter: blur(10px); border-bottom: 1px solid var(--glass-border); z-index: 1000;
+        }
+
+        .logo-box { display: flex; align-items: center; gap: 10px; }
+        .logo-square { width: 12px; height: 12px; background: var(--accent); transform: rotate(45deg); animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; transform: rotate(45deg) scale(1); } 50% { opacity: 0.3; transform: rotate(45deg) scale(0.8); } }
+
+        /* --- HERO SECTION --- */
+        .hero {
+            height: 120vh; display: flex; flex-direction: column; justify-content: center; padding: 0 10%;
+            position: relative; overflow: hidden;
+        }
+
+        .hero-visual {
+            position: absolute; right: -5%; top: 10%; width: 50%; height: 80%;
+            background: url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&q=80&w=1200');
+            background-size: cover; filter: grayscale(1) brightness(0.4) contrast(1.2);
+            mask-image: linear-gradient(to left, black, transparent);
+            z-index: -1;
+        }
+
+        .big-title { font-size: clamp(4rem, 12vw, 10rem); line-height: 0.8; font-family: 'Syne'; text-transform: uppercase; font-weight: 800; }
+        .glitch-text { position: relative; display: inline-block; }
+        .glitch-text::before { content: attr(data-text); position: absolute; left: -2px; text-shadow: 2px 0 red; top: 0; color: white; background: var(--void); overflow: hidden; clip: rect(0, 900px, 0, 0); animation: glitch-anim 3s infinite linear alternate-reverse; }
+        
+        @keyframes glitch-anim { 
+            0% { clip: rect(10px, 9999px, 50px, 0); }
+            20% { clip: rect(80px, 9999px, 90px, 0); }
+            100% { clip: rect(20px, 9999px, 100px, 0); }
+        }
+
+        /* --- TACTICAL INFO BAR --- */
+        .info-bar { display: flex; gap: 50px; margin-top: 40px; border-top: 1px solid var(--glass-border); padding-top: 20px; }
+        .info-item h6 { font-family: 'JetBrains Mono'; font-size: 10px; color: var(--accent); margin-bottom: 5px; text-transform: uppercase; }
+        .info-item p { font-size: 18px; font-weight: 700; font-family: 'Syne'; }
+
+        /* --- HUD CATALOG --- */
+        .catalog-header { padding: 100px 10% 20px 10%; display: flex; justify-content: space-between; align-items: flex-end; }
+        
+        .grid-container { padding: 0 10% 100px 10%; display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 40px; }
+
+        .card-hud {
+            position: relative; background: var(--surface);
+            border: 1px solid var(--glass-border); transition: 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+            overflow: hidden;
+        }
+
+        .card-hud:hover { border-color: var(--accent); box-shadow: 0 0 30px var(--accent-glow); }
+
+        .card-hud::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 2px;
+            background: var(--accent); transform: scaleX(0); transition: 0.6s; transform-origin: left;
+        }
+        .card-hud:hover::before { transform: scaleX(1); }
+
+        .card-img-wrap { position: relative; height: 350px; overflow: hidden; }
+        .card-hud img { 
+            width: 100%; height: 100%; object-fit: cover; 
+            filter: grayscale(1) contrast(1.1); transition: 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .card-hud:hover img { filter: grayscale(0) scale(1.05); }
+
+        /* Biometric Scanning Overlay */
+        .scan-bar {
+            position: absolute; top: 0; left: 0; width: 100%; height: 4px;
+            background: var(--accent); box-shadow: 0 0 15px var(--accent);
+            z-index: 10; opacity: 0; pointer-events: none;
+        }
+        .card-hud:hover .scan-bar { animation: scan 2s infinite linear; opacity: 1; }
+        @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
+
+        .card-body { padding: 25px; border-top: 1px solid var(--glass-border); }
+
+        .btn-hex {
+            background: transparent; border: 1px solid var(--accent); color: var(--accent);
+            padding: 14px; font-family: 'JetBrains Mono'; font-weight: 700;
+            text-transform: uppercase; cursor: pointer; transition: 0.3s;
+            display: flex; justify-content: center; align-items: center; gap: 10px; width: 100%;
+        }
+        .btn-hex:hover { background: var(--accent); color: black; box-shadow: 0 0 20px var(--accent); }
+
+        /* --- DATA SECTION --- */
+        .data-section { padding: 100px 10%; background: #050505; border-top: 1px solid var(--glass-border); }
+        .metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+        .metric-card { padding: 30px; border: 1px solid var(--glass-border); text-align: center; }
+        .metric-val { font-size: 3rem; font-family: 'Syne'; font-weight: 800; color: var(--accent); }
+
+        /* --- TACTICAL FOOTER --- */
+        footer {
+            padding: 40px 10%; border-top: 1px solid var(--glass-border);
+            display: flex; justify-content: space-between; align-items: center;
+            font-family: 'JetBrains Mono'; font-size: 10px; color: #444;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="cursor-main"></div>
+    <div id="cursor-aura"></div>
+    <div class="overlay-master"></div>
+    <div class="scanlines"></div>
+
+    <nav>
+        <div class="logo-box">
+            <div class="logo-square"></div>
+            <div class="logo" style="font-family: 'Syne'; font-weight: 800; letter-spacing: 2px;">FORGEFIT // OS</div>
+        </div>
+        <div style="display: flex; gap: 30px; font-family: 'JetBrains Mono'; font-size: 11px;">
+            <a href="#catalog" style="color: #888; text-decoration: none;">ARMORY</a>
+            <a href="#data" style="color: #888; text-decoration: none;">METRICS</a>
+            <span style="color: var(--accent);">CORE_STABLE</span>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <div class="hero-visual"></div>
+        <div style="margin-bottom: 20px;">
+            <span style="font-family: 'JetBrains Mono'; color: var(--accent); font-size: 12px; letter-spacing: 4px;">SYSTEM_INITIALIZED</span>
+        </div>
+        <h1 class="big-title">
+            <span class="glitch-text" data-text="UNLEASH">UNLEASH</span><br>
+            <span class="outline" style="font-size: 60px;">POTENTIAL.</span>
+        </h1>
+        
+        <div class="info-bar">
+            <div class="info-item">
+                <h6>Biometric Link</h6>
+                <p>99.2%</p>
+            </div>
+            <div class="info-item">
+                <h6>Hardware Tier</h6>
+                <p>S-CLASS</p>
+            </div>
+            <div class="info-item">
+                <h6>System Load</h6>
+                <p id="cpu-load">12%</p>
+            </div>
+        </div>
+
+        <div style="margin-top: 50px;">
+            <button class="btn-hex" style="width: auto; padding: 20px 60px;">Download Profile</button>
+        </div>
+    </section>
+<section class="armory-grid" style="padding: 100px 10%; background: var(--void); border-top: 1px solid var(--glass-border);">
+    
+    <div class="grid-header" style="margin-bottom: 60px; display: flex; align-items: flex-end; justify-content: space-between;">
+        <div class="terminal-text">
+            <h2 style="font-family: 'Syne'; font-size: 3.5rem; text-transform: uppercase; line-height: 1;">Current<br><span class="outline">Inventory</span></h2>
+            <p style="font-family: 'JetBrains Mono'; color: var(--accent); font-size: 11px; margin-top: 15px;">TOTAL_ASSETS_DETECTED: [06]</p>
+        </div>
+        <div class="filter-tabs" style="display: flex; gap: 20px; font-family: 'JetBrains Mono'; font-size: 10px;">
+            <span style="border-bottom: 2px solid var(--accent); padding-bottom: 5px;">ALL_HARDWARE</span>
+            <span style="color: #444;">KINETIC</span>
+            <span style="color: #444;">STATIONARY</span>
+        </div>
+    </div>
+
+    <div class="tactical-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 40px;">
+        
+        <div class="asset-module" onmouseenter="playBeep()">
+            <div class="hud-frame" style="position: relative; border: 1px solid var(--glass-border); background: #080808; transition: 0.4s;">
+                <div class="corner-accents" style="position: absolute; inset: -1px; pointer-events: none; border: 1px solid transparent; transition: 0.4s;"></div>
+                
+                <div class="asset-visual" style="height: 300px; overflow: hidden; position: relative;">
+                    <div class="overlay-data" style="position: absolute; top: 10px; left: 10px; font-family: 'JetBrains Mono'; font-size: 9px; z-index: 5; color: rgba(255,255,255,0.3);">
+                        MASS: 25KG<br>CORE: STEEL_V2
+                    </div>
+                    <img src="https://images.unsplash.com/photo-1638536532686-d610adfc8e5c?auto=format&fit=crop&q=80&w=600" style="width: 100%; height: 100%; object-fit: cover; filter: grayscale(1) contrast(1.2); transition: 0.6s;">
+                </div>
+
+                <div class="asset-details" style="padding: 20px; border-top: 1px solid var(--glass-border);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span class="data-label" style="font-family: 'JetBrains Mono'; font-size: 10px; color: var(--accent);">STRENGTH_MOD</span>
+                        <span style="font-weight: 800; font-family: 'Syne';">$120</span>
+                    </div>
+                    <h4 style="font-family: 'Syne'; text-transform: uppercase; letter-spacing: 1px;">Kinetic Hex Units</h4>
+                    
+                    <div class="spec-bars" style="margin: 15px 0;">
+                        <div style="height: 2px; background: #111; width: 100%; margin-bottom: 4px;"><div style="width: 85%; height: 100%; background: var(--accent);"></div></div>
+                        <div style="display: flex; justify-content: space-between; font-size: 8px; font-family: 'JetBrains Mono'; color: #444;">
+                            <span>DURABILITY</span><span>85%</span>
+                        </div>
+                    </div>
+
+                    <button class="btn-hex" style="margin-top: 10px;">
+                        <span class="btn-text">DEPLOY TO CART</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="asset-module">
+            <div class="hud-frame" style="position: relative; border: 1px solid var(--glass-border); background: #080808;">
+                <div class="asset-visual" style="height: 300px; overflow: hidden; position: relative;">
+                    <div class="overlay-data" style="position: absolute; top: 10px; left: 10px; font-family: 'JetBrains Mono'; font-size: 9px; z-index: 5; color: rgba(255,255,255,0.3);">
+                        LOAD: 1200LB<br>MAT: CARBON_S
+                    </div>
+                    <img src="https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&q=80&w=600" style="width: 100%; height: 100%; object-fit: cover; filter: grayscale(1) contrast(1.2);">
+                </div>
+                <div class="asset-details" style="padding: 20px; border-top: 1px solid var(--glass-border);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span class="data-label" style="font-family: 'JetBrains Mono'; font-size: 10px; color: var(--accent);">INFRASTRUCTURE</span>
+                        <span style="font-weight: 800; font-family: 'Syne';">$850</span>
+                    </div>
+                    <h4 style="font-family: 'Syne'; text-transform: uppercase; letter-spacing: 1px;">Titan Core Rack</h4>
+                    
+                    <div class="spec-bars" style="margin: 15px 0;">
+                        <div style="height: 2px; background: #111; width: 100%; margin-bottom: 4px;"><div style="width: 98%; height: 100%; background: var(--accent);"></div></div>
+                        <div style="display: flex; justify-content: space-between; font-size: 8px; font-family: 'JetBrains Mono'; color: #444;">
+                            <span>STRUCTURAL_INTEGRITY</span><span>98%</span>
+                        </div>
+                    </div>
+                    <button class="btn-hex" style="margin-top: 10px;">DEPLOY TO CART</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="asset-module">
+            <div class="hud-frame" style="position: relative; border: 1px solid var(--glass-border); background: #080808;">
+                <div class="asset-visual" style="height: 300px; overflow: hidden; position: relative;">
+                    <div class="overlay-data" style="position: absolute; top: 10px; left: 10px; font-family: 'JetBrains Mono'; font-size: 9px; z-index: 5; color: rgba(255,255,255,0.3);">
+                        ANGLE: 0-90°<br>SYNC: BIO_MEM
+                    </div>
+                    <img src="https://images.unsplash.com/photo-1544033527-b192daee1f5b?auto=format&fit=crop&q=80&w=600" style="width: 100%; height: 100%; object-fit: cover; filter: grayscale(1) contrast(1.2);">
+                </div>
+                <div class="asset-details" style="padding: 20px; border-top: 1px solid var(--glass-border);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span class="data-label" style="font-family: 'JetBrains Mono'; font-size: 10px; color: var(--accent);">SUPPORT_UNIT</span>
+                        <span style="font-weight: 800; font-family: 'Syne';">$340</span>
+                    </div>
+                    <h4 style="font-family: 'Syne'; text-transform: uppercase; letter-spacing: 1px;">Neural Shift Bench</h4>
+                    
+                    <div class="spec-bars" style="margin: 15px 0;">
+                        <div style="height: 2px; background: #111; width: 100%; margin-bottom: 4px;"><div style="width: 70%; height: 100%; background: var(--accent);"></div></div>
+                        <div style="display: flex; justify-content: space-between; font-size: 8px; font-family: 'JetBrains Mono'; color: #444;">
+                            <span>ERGONOMICS</span><span>70%</span>
+                        </div>
+                    </div>
+                    <button class="btn-hex" style="margin-top: 10px;">DEPLOY TO CART</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</section>
+<style>
+    /* ADD TO YOUR EXISTING STYLE TAG */
+    .asset-module:hover .hud-frame {
+        border-color: var(--accent);
+        background: #0d0d0d;
+        transform: translateY(-5px);
+    }
+    .asset-module:hover img {
+        filter: grayscale(0) contrast(1);
+        transform: scale(1.1);
+    }
+    .asset-module:hover .corner-accents {
+        border-color: var(--accent);
+        box-shadow: 0 0 15px var(--accent-glow);
+    }
+</style>
+    <div class="catalog-header" id="catalog">
+        <div>
+            <span class="data-label" style="color: var(--accent); font-family: 'JetBrains Mono'; font-size: 10px;">AVAILABLE_ASSETS</span>
+            <h2 style="font-family: 'Syne'; font-size: 3rem; text-transform: uppercase;">Equipment</h2>
+        </div>
+        <div style="font-family: 'JetBrains Mono'; font-size: 12px; color: #444;">Showing: 03 Units</div>
+    </div>
+
+    <div class="grid-container">
+        <div class="card-hud">
+            <div class="card-img-wrap">
+                <div class="scan-bar"></div>
+                <img src="https://images.unsplash.com/photo-1638536532686-d610adfc8e5c?auto=format&fit=crop&q=80&w=600" alt="Iron">
+            </div>
+            <div class="card-body">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                    <span style="font-family: 'JetBrains Mono'; font-size: 10px; color: #555;">REF_ID: 088-HEX</span>
+                    <span style="font-family: 'JetBrains Mono'; font-size: 10px; color: var(--accent);">STABLE</span>
+                </div>
+                <h3 style="font-family: 'Syne'; font-size: 1.5rem; margin-bottom: 15px;">APEX HEX UNIT</h3>
+                <button class="btn-hex"><i data-lucide="shopping-cart" style="width: 14px;"></i> Acquire Asset</button>
+            </div>
+        </div>
+
+        <div class="card-hud">
+            <div class="card-img-wrap">
+                <div class="scan-bar"></div>
+                <img src="https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&q=80&w=600" alt="Steel">
+            </div>
+            <div class="card-body">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                    <span style="font-family: 'JetBrains Mono'; font-size: 10px; color: #555;">REF_ID: 102-RK</span>
+                    <span style="font-family: 'JetBrains Mono'; font-size: 10px; color: var(--accent);">STABLE</span>
+                </div>
+                <h3 style="font-family: 'Syne'; font-size: 1.5rem; margin-bottom: 15px;">TITAN RACK S1</h3>
+                <button class="btn-hex"><i data-lucide="shopping-cart" style="width: 14px;"></i> Acquire Asset</button>
+            </div>
+        </div>
+
+        <div class="card-hud">
+            <div class="card-img-wrap">
+                <div class="scan-bar"></div>
+                <img src="https://images.unsplash.com/photo-1544033527-b192daee1f5b?auto=format&fit=crop&q=80&w=600" alt="Bench">
+            </div>
+            <div class="card-body">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                    <span style="font-family: 'JetBrains Mono'; font-size: 10px; color: #555;">REF_ID: 044-NR</span>
+                    <span style="font-family: 'JetBrains Mono'; font-size: 10px; color: var(--accent);">STABLE</span>
+                </div>
+                <h3 style="font-family: 'Syne'; font-size: 1.5rem; margin-bottom: 15px;">NEURAL BENCH</h3>
+                <button class="btn-hex"><i data-lucide="shopping-cart" style="width: 14px;"></i> Acquire Asset</button>
+            </div>
+        </div>
+    </div>
+<div id="budget-terminal" style="position: fixed; top: 100px; right: 5%; z-index: 2000; font-family: 'JetBrains Mono'; text-align: right; pointer-events: none;">
+    <div style="color: var(--accent); font-size: 10px; letter-spacing: 2px;">ACTIVE_LOADOUT</div>
+    <div style="font-size: 24px; font-weight: 800; color: #fff;"><span id="cart-count">0</span> UNITS</div>
+    <div style="margin-top: 10px; color: #444; font-size: 10px;">CREDIT_BALANCE</div>
+    <div style="font-size: 20px; font-family: 'Syne'; color: #fff;">$<span id="budget-display">5000</span></div>
+</div>
+
+<section class="armory-grid" id="catalog" style="padding: 100px 10%; background: var(--void); border-top: 1px solid var(--glass-border);">
+    
+    <div class="grid-header" style="margin-bottom: 60px; display: flex; align-items: flex-end; justify-content: space-between;">
+        <div class="terminal-text">
+            <h2 style="font-family: 'Syne'; font-size: 3.5rem; text-transform: uppercase; line-height: 1;">Armory<br><span class="outline" style="-webkit-text-stroke: 1px white; color: transparent;">Deployment</span></h2>
+            <p style="font-family: 'JetBrains Mono'; color: var(--accent); font-size: 11px; margin-top: 15px;">TOTAL_ASSETS_DETECTED: [03]</p>
+        </div>
+        <div class="filter-tabs" style="display: flex; gap: 20px; font-family: 'JetBrains Mono'; font-size: 10px;">
+            <span style="border-bottom: 2px solid var(--accent); padding-bottom: 5px; color: #fff;">ALL_HARDWARE</span>
+            <span style="color: #444;">KINETIC</span>
+            <span style="color: #444;">STATIONARY</span>
+        </div>
+    </div>
+
+    <div class="tactical-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 40px;">
+        
+        <div class="card-hud asset-module" data-price="120">
+            <div class="card-img-wrap">
+                <div class="scan-bar"></div>
+                <div class="overlay-data" style="position: absolute; top: 10px; left: 10px; font-family: 'JetBrains Mono'; font-size: 9px; z-index: 5; color: rgba(255,255,255,0.3);">MASS: 25KG<br>CORE: STEEL_V2</div>
+                <img src="https://images.unsplash.com/photo-1638536532686-d610adfc8e5c?auto=format&fit=crop&q=80&w=600">
+            </div>
+            <div class="card-body">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                    <span style="font-family: 'JetBrains Mono'; font-size: 10px; color: var(--accent);">STRENGTH_MOD</span>
+                    <span class="asset-price" style="font-family: 'Syne'; font-weight: 800;">$120</span>
+                </div>
+                <h3 style="font-family: 'Syne'; font-size: 1.5rem; text-transform: uppercase;">Apex Hex Unit</h3>
+                <p class="asset-desc" style="font-size: 12px; color: #666; margin: 15px 0; line-height: 1.6; font-family: 'Space Grotesk';">Precision-engineered hexagonal dampeners with high-friction coating for neural-sync lifting cycles.</p>
+                <button class="btn-hex deploy-btn"><i data-lucide="crosshair" style="width: 14px;"></i> <span>ACQUIRE ASSET</span></button>
+            </div>
+        </div>
+
+        <div class="card-hud asset-module" data-price="850">
+            <div class="card-img-wrap">
+                <div class="scan-bar"></div>
+                <div class="overlay-data" style="position: absolute; top: 10px; left: 10px; font-family: 'JetBrains Mono'; font-size: 9px; z-index: 5; color: rgba(255,255,255,0.3);">LOAD: 1200LB<br>MAT: CARBON_S</div>
+                <img src="https://images.unsplash.com/photo-1540497077202-7c8a3999166f?auto=format&fit=crop&q=80&w=600">
+            </div>
+            <div class="card-body">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                    <span style="font-family: 'JetBrains Mono'; font-size: 10px; color: var(--accent);">INFRASTRUCTURE</span>
+                    <span class="asset-price" style="font-family: 'Syne'; font-weight: 800;">$850</span>
+                </div>
+                <h3 style="font-family: 'Syne'; font-size: 1.5rem; text-transform: uppercase;">Titan Rack S1</h3>
+                <p class="asset-desc" style="font-size: 12px; color: #666; margin: 15px 0; line-height: 1.6; font-family: 'Space Grotesk';">Reinforced carbon-steel exoskeleton frame. Integrated safety dampeners and multi-axis neural attachment points.</p>
+                <button class="btn-hex deploy-btn"><i data-lucide="crosshair" style="width: 14px;"></i> <span>ACQUIRE ASSET</span></button>
+            </div>
+        </div>
+
+        <div class="card-hud asset-module" data-price="340">
+            <div class="card-img-wrap">
+                <div class="scan-bar"></div>
+                <div class="overlay-data" style="position: absolute; top: 10px; left: 10px; font-family: 'JetBrains Mono'; font-size: 9px; z-index: 5; color: rgba(255,255,255,0.3);">ANGLE: 0-90°<br>SYNC: BIO_MEM</div>
+                <img src="https://images.unsplash.com/photo-1544033527-b192daee1f5b?auto=format&fit=crop&q=80&w=600">
+            </div>
+            <div class="card-body">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                    <span style="font-family: 'JetBrains Mono'; font-size: 10px; color: var(--accent);">SUPPORT_UNIT</span>
+                    <span class="asset-price" style="font-family: 'Syne'; font-weight: 800;">$340</span>
+                </div>
+                <h3 style="font-family: 'Syne'; font-size: 1.5rem; text-transform: uppercase;">Neural Bench</h3>
+                <p class="asset-desc" style="font-size: 12px; color: #666; margin: 15px 0; line-height: 1.6; font-family: 'Space Grotesk';">Biometric memory foam padding that contours to your frame. Precision angle adjustment for targeted isolation.</p>
+                <button class="btn-hex deploy-btn"><i data-lucide="crosshair" style="width: 14px;"></i> <span>ACQUIRE ASSET</span></button>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+<style>
+    /* --- ENHANCED HOVER & CLICK STATES --- */
+    .asset-module { transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    
+    /* Clicked State: Green Neon */
+    .asset-module.deployed {
+        border-color: #00ff88 !important;
+        box-shadow: 0 0 30px rgba(0, 255, 136, 0.2) !important;
+    }
+    
+    .asset-module.deployed img {
+        filter: grayscale(0) brightness(1.1) !important;
+    }
+
+    .asset-module.deployed .btn-hex {
+        background: #00ff88;
+        color: #000;
+        border-color: #00ff88;
+    }
+
+    .asset-module.deployed .asset-price {
+        color: #00ff88;
+    }
+
+    .asset-module:active { transform: scale(0.98); }
+</style>
+
+<section class="data-section" id="data">
+    <div class="metric-grid">
+        <div class="metric-card">
+            <div class="metric-val" id="m1">0</div>
+            <div style="font-family: 'JetBrains Mono'; font-size: 10px; color: #555; margin-top: 10px;">CALORIES_BURNED</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-val" id="m2">0</div>
+            <div style="font-family: 'JetBrains Mono'; font-size: 10px; color: #555; margin-top: 10px;">PEAK_WATTAGE</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-val" id="m3">0</div>
+            <div style="font-family: 'JetBrains Mono'; font-size: 10px; color: #555; margin-top: 10px;">NEURAL_SYNC</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-val">∞</div>
+            <div style="font-family: 'JetBrains Mono'; font-size: 10px; color: #555; margin-top: 10px;">POTENTIAL</div>
+        </div>
+    </div>
+</section>
+
+<footer>
+    <div>FORGEFIT_OS_VERSION_4.2.0 // (C) 2026 FORGE INDUSTRIES</div>
+    <div style="display: flex; gap: 20px;">
+        <span>LATENCY: 12ms</span>
+        <span id="live-clock">00:00:00</span>
+    </div>
+</footer>
+
+<script>
+    lucide.createIcons();
+    gsap.registerPlugin(ScrollTrigger);
+
+    // --- CURSOR LOGIC ---
+    const mainCursor = document.getElementById('cursor-main');
+    const auraCursor = document.getElementById('cursor-aura');
+    document.addEventListener('mousemove', (e) => {
+        gsap.to(mainCursor, { x: e.clientX, y: e.clientY, duration: 0 });
+        gsap.to(auraCursor, { x: e.clientX - 22, y: e.clientY - 22, duration: 0.15 });
+    });
+
+    // --- BUDGET & DEPLOYMENT LOGIC ---
+    let creditBalance = 5000;
+    let itemsDeployed = 0;
+
+    const budgetDisplay = document.getElementById('budget-display');
+    const countDisplay = document.getElementById('cart-count');
+    const deployButtons = document.querySelectorAll('.deploy-btn');
+
+    deployButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const card = this.closest('.asset-module');
+            const price = parseInt(card.getAttribute('data-price'));
+            const btnText = this.querySelector('span');
+
+            if (!card.classList.contains('deployed')) {
+                // Check if enough credits
+                if (creditBalance >= price) {
+                    card.classList.add('deployed');
+                    creditBalance -= price;
+                    itemsDeployed++;
+                    btnText.innerText = "ASSET_SYNCED";
+                    triggerFlicker(card);
+                } else {
+                    alert("SYSTEM_ERROR: INSUFFICIENT_CREDITS");
+                }
+            } else {
+                // Undoing deployment
+                card.classList.remove('deployed');
+                creditBalance += price;
+                itemsDeployed--;
+                btnText.innerText = "ACQUIRE ASSET";
+            }
+
+            // Update UI
+            budgetDisplay.innerText = creditBalance;
+            countDisplay.innerText = itemsDeployed;
+            
+            // Visual feedback on budget
+            if(creditBalance < 1000) budgetDisplay.style.color = "#ff4444";
+            else budgetDisplay.style.color = "#fff";
+        });
+    });
+
+    function triggerFlicker(element) {
+        gsap.to(element, { opacity: 0.5, duration: 0.05, repeat: 3, yoyo: true });
+    }
+
+    // --- EXISTING GSAP & CLOCK ---
+    gsap.from(".big-title span", { y: 100, opacity: 0, duration: 1, stagger: 0.2, ease: "power4.out" });
+    
+    setInterval(() => {
+        document.getElementById('cpu-load').innerText = Math.floor(Math.random() * 20 + 5) + "%";
+        document.getElementById('live-clock').innerText = new Date().toLocaleTimeString('en-GB');
+    }, 1000);
+
+    // Initial Metric Animations
+    function animateCounter(id, target) {
+        let obj = { val: 0 };
+        gsap.to(obj, {
+            val: target,
+            scrollTrigger: { trigger: "#data", start: "top 80%" },
+            onUpdate: () => document.getElementById(id).innerText = Math.floor(obj.val),
+            duration: 2, ease: "power2.out"
+        });
+    }
+    animateCounter("m1", 1250);
+    animateCounter("m2", 850);
+    animateCounter("m3", 98);
+</script>
+    <section class="data-section" id="data">
+        <div class="metric-grid">
+            <div class="metric-card">
+                <div class="metric-val" id="m1">0</div>
+                <div style="font-family: 'JetBrains Mono'; font-size: 10px; color: #555; margin-top: 10px;">CALORIES_BURNED</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-val" id="m2">0</div>
+                <div style="font-family: 'JetBrains Mono'; font-size: 10px; color: #555; margin-top: 10px;">PEAK_WATTAGE</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-val" id="m3">0</div>
+                <div style="font-family: 'JetBrains Mono'; font-size: 10px; color: #555; margin-top: 10px;">NEURAL_SYNC</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-val">∞</div>
+                <div style="font-family: 'JetBrains Mono'; font-size: 10px; color: #555; margin-top: 10px;">POTENTIAL</div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div>FORGEFIT_OS_VERSION_4.2.0 // (C) 2026 FORGE INDUSTRIES</div>
+        <div style="display: flex; gap: 20px;">
+            <span>LATENCY: 12ms</span>
+            <span id="live-clock">00:00:00</span>
+        </div>
+    </footer>
+
+    <script>
+        lucide.createIcons();
+        gsap.registerPlugin(ScrollTrigger);
+
+        // --- NEURAL CURSOR ---
+        const mainCursor = document.getElementById('cursor-main');
+        const auraCursor = document.getElementById('cursor-aura');
+
+        document.addEventListener('mousemove', (e) => {
+            gsap.to(mainCursor, { x: e.clientX, y: e.clientY, duration: 0 });
+            gsap.to(auraCursor, { x: e.clientX - 22, y: e.clientY - 22, duration: 0.15 });
+        });
+
+        // Hover effect for aura
+        document.querySelectorAll('.btn-hex, .card-hud').forEach(el => {
+            el.addEventListener('mouseenter', () => auraCursor.style.transform = 'scale(1.5)');
+            el.addEventListener('mouseleave', () => auraCursor.style.transform = 'scale(1)');
+        });
+
+        // --- GSAP ANIMATIONS ---
+        gsap.from(".big-title span", {
+            y: 100, opacity: 0, duration: 1, stagger: 0.2, ease: "power4.out"
+        });
+
+        gsap.from(".card-hud", {
+            scrollTrigger: { trigger: ".grid-container", start: "top 80%" },
+            y: 50, opacity: 0, duration: 1, stagger: 0.2, ease: "power4.out"
+        });
+
+        // --- METRIC COUNTERS ---
+        function animateCounter(id, target) {
+            let obj = { val: 0 };
+            gsap.to(obj, {
+                val: target,
+                scrollTrigger: { trigger: "#data", start: "top 80%" },
+                onUpdate: () => document.getElementById(id).innerText = Math.floor(obj.val),
+                duration: 2, ease: "power2.out"
+            });
+        }
+
+        animateCounter("m1", 1250);
+        animateCounter("m2", 850);
+        animateCounter("m3", 98);
+
+        // --- LIVE DATA UPDATES ---
+        setInterval(() => {
+            document.getElementById('cpu-load').innerText = Math.floor(Math.random() * 20 + 5) + "%";
+            document.getElementById('live-clock').innerText = new Date().toLocaleTimeString('en-GB');
+        }, 1000);
+    </script>
+</body>
+</html>
